@@ -1,0 +1,6 @@
+*.fs
+*.json
+*.pack
+*.history
+vendor/
+obj_dir/
