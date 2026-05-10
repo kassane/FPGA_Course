@@ -2,5 +2,8 @@
 *.json
 *.pack
 *.history
+*.hex
 vendor/
+!vendor/*.sh
 obj_dir/
+*zig-*/

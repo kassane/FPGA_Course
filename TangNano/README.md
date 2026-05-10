@@ -148,6 +148,125 @@ make host-prog MODULE=9K/a5_pwm
 
 ---
 
+---
+
+## Track B — Soft CPU (PicoRV32 / RV32I)
+
+### b0_picorv32 — PicoRV32 SoC
+
+Minimal SoC: PicoRV32 (RV32I) + 1 KB BRAM + GPIO.
+
+**Memory map:**
+
+| Address | Size | Description |
+|---------|------|-------------|
+| `0x00000000` | 1 KB | BRAM (256 × 32-bit words) |
+| `0x20000000` | 4 B | GPIO write-only (bits[2:0] = LED_R/G/B, active-low) |
+
+**Firmware** (`9K/b0_picorv32/firmware/`): written in Zig using `callconv(.naked)` inline assembly. No runtime, no libc. Build produces `firmware.hex` loaded into BRAM via `$readmemh`.
+
+```sh
+# Firmware only (regenerates firmware.hex)
+cd 9K/b0_picorv32/firmware && zig build
+
+# Adjust blink speed (default DELAY=5, use ~1000 for ~1 Hz visible blink)
+cd 9K/b0_picorv32/firmware && zig build -Ddelay=1000
+
+# Full flow
+make sim       MODULE=9K/b0_picorv32
+make host-all  MODULE=9K/b0_picorv32
+make host-prog MODULE=9K/b0_picorv32
+```
+
+> With `DELAY=5` (default) the blink runs at ~200 Hz — LEDs appear dim but on.
+> Use `-Ddelay=1000` for a visible ~1 Hz blink on hardware.
+
+**Files:** `top.v`, `soc.v`, `b0_tb.v`, `picorv32.vlt`, `firmware/start.zig`, `firmware/build.zig`, `firmware/bin2hex.py`
+
+---
+
+### b1_cpu — C Firmware
+
+Same PicoRV32 SoC as B0. Firmware written in C (`zig cc`, no libc). Demonstrates a binary counter on all three LEDs — counts 0–7, each step shown as 3-bit active-low pattern.
+
+```sh
+# Firmware only
+cd 9K/b1_cpu/firmware && zig build
+
+# Adjust step speed (default 50000 iterations ≈ visible on hardware)
+cd 9K/b1_cpu/firmware && zig build -Ddelay=50000
+
+# Full flow
+make sim       MODULE=9K/b1_cpu
+make host-all  MODULE=9K/b1_cpu
+make host-prog MODULE=9K/b1_cpu
+```
+
+LED pattern (active-low, bit2=LED_B, bit1=LED_G, bit0=LED_R):
+
+| Count | leds[2:0] | LED_R | LED_G | LED_B |
+|-------|-----------|-------|-------|-------|
+| 0 | 111 | on | on | on |
+| 1 | 110 | off | on | on |
+| 2 | 101 | on | off | on |
+| 3 | 100 | off | off | on |
+| 4 | 011 | on | on | off |
+| 5 | 010 | off | on | off |
+| 6 | 001 | on | off | off |
+| 7 | 000 | off | off | off |
+
+**Files:** `top.v`, `soc.v`, `b1_tb.v`, `picorv32.vlt`, `firmware/start.S`, `firmware/main.c`, `firmware/build.zig`, `firmware/bin2hex.py`
+
+---
+
+### b2_zig — Native Zig Firmware
+
+Same PicoRV32 SoC. Firmware written entirely in Zig — no C, no assembly file. Demonstrates comptime pattern tables, type-safe MMIO via a `Gpio` struct, and wrapping `u3` arithmetic for index cycling.
+
+Pattern: knight-rider / cylon scanner (active-low)
+
+```
+R on → G on → B on → G on → R on → all off → all on → all off → repeat
+```
+
+```sh
+# Firmware only
+cd 9K/b2_zig/firmware && zig build
+
+# Adjust step speed (default 50000 iterations ≈ visible on hardware)
+cd 9K/b2_zig/firmware && zig build -Ddelay=50000
+
+# Full flow
+make sim       MODULE=9K/b2_zig
+make host-all  MODULE=9K/b2_zig
+make host-prog MODULE=9K/b2_zig
+```
+
+Key Zig features used:
+
+| Feature | Usage |
+|---------|-------|
+| `callconv(.naked)` | Zero-overhead entry point (`_start`) |
+| `*volatile u32` | Memory-mapped GPIO register |
+| `[8]u3` comptime array | Pattern table embedded in `.rodata` |
+| `u3` wrapping index | `+%=` cycles 0–7 without division |
+| `asm volatile` clobbers | Struct-based: `.{ .memory = true, .sp = true }` |
+
+**Files:** `top.v`, `soc.v`, `b2_tb.v`, `picorv32.vlt`, `firmware/firmware.zig`, `firmware/build.zig`, `firmware/bin2hex.py`
+
+**PicoRV32 configuration:**
+
+| Parameter | Value |
+|-----------|-------|
+| `COMPRESSED_ISA` | 0 (pure RV32I) |
+| `BARREL_SHIFTER` | 0 |
+| `ENABLE_MUL/DIV` | 0 |
+| `ENABLE_IRQ` | 0 |
+| `PROGADDR_RESET` | `0x00000000` |
+| `STACKADDR` | `0x00000400` |
+
+---
+
 ## Pin assignments
 
 See `tangnano9k.cst`. Always verify against the Sipeed schematic before programming.

@@ -13,12 +13,24 @@ GOWIN_PACK  := PYTHONPATH=$(VENDOR)/apicula python3 -m apycula.gowin_pack
 DEVICE_FAM  := GW1N-9C
 DEVICE_PART := GW1NR-LV9QN88PC6/I5
 
+# ── Track B (soft CPU): add PicoRV32 source + firmware build ─────────────────
+PICORV32_V    := $(VENDOR)/nextpnr/ice40/smoketest/attosoc/picorv32.v
+ifneq (,$(filter 9K/b%,$(MODULE)))
+SOURCES       += $(PICORV32_V)
+FW_HEX        := $(MODULE)/firmware/firmware.hex
+$(FW_HEX):
+	cd $(MODULE)/firmware && zig build
+host-synth: $(FW_HEX)
+sim: $(FW_HEX)
+endif
+
 SIM_TB      := $(wildcard $(MODULE)/*_tb.v)
-SIM_SOURCES := $(SOURCES) $(SIM_TB)
+SIM_VLT     := $(wildcard $(MODULE)/*.vlt)
+SIM_SOURCES := $(SOURCES) $(SIM_TB) $(SIM_VLT)
 SIM_TOP     := $(basename $(notdir $(SIM_TB)))
 
 host-synth: $(SOURCES)
-	yosys -p "synth_gowin -json top.json -top top" $^
+	yosys -p "synth_gowin -json top.json -top top" $(SOURCES)
 
 host-pnr: top.json
 	$(NEXTPNR_H) --json top.json --write top.pack \

@@ -1,0 +1,13 @@
+`verilator_config
+lint_off -rule WIDTHEXPAND    -file "*/picorv32.v"
+lint_off -rule WIDTHTRUNC     -file "*/picorv32.v"
+lint_off -rule WIDTHXZEXPAND  -file "*/picorv32.v"
+lint_off -rule CASEOVERLAP    -file "*/picorv32.v"
+lint_off -rule CASEINCOMPLETE -file "*/picorv32.v"
+lint_off -rule PINCONNECTEMPTY -file "*/picorv32.v"
+lint_off -rule PINMISSING     -file "*/picorv32.v"
+lint_off -rule UNUSEDSIGNAL   -file "*/picorv32.v"
+lint_off -rule UNOPTFLAT      -file "*/picorv32.v"
+lint_off -rule DECLFILENAME   -file "*/picorv32.v"
+lint_off -rule MULTITOP       -file "*/picorv32.v"
+lint_off -rule PINCONNECTEMPTY -file "*/soc.v"
